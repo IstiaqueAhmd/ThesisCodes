@@ -136,9 +136,9 @@ class ResidualBlock(nn.Module):
 # Training and evaluation code (similar structure to previous versions)
 if __name__ == '__main__':
     # Dataset setup
-    train_dir = 'Splitted_Data(10dB)/train'
-    val_dir = 'Splitted_Data(10dB)/val'
-    test_dir = 'Splitted_Data(10dB)/test'
+    train_dir = 'Data/Splitted_Data(10dB)/train'
+    val_dir = 'Data/Splitted_Data(10dB)/val'
+    test_dir = 'Data/Splitted_Data(10dB)/test'
 
     # Calculate dataset stats
     temp_train = ScalogramDataset(train_dir)
