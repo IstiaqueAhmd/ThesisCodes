@@ -136,9 +136,9 @@ class ResidualBlock(nn.Module):
 # Training and evaluation code (similar structure to previous versions)
 if __name__ == '__main__':
     # Dataset setup
-    train_dir = 'Splitted_Data/train'
-    val_dir = 'Splitted_Data/val'
-    test_dir = 'Splitted_Data/test'
+    train_dir = 'Splitted_Data(10dB)/train'
+    val_dir = 'Splitted_Data(10dB)/val'
+    test_dir = 'Splitted_Data(10dB)/test'
 
     # Calculate dataset stats
     temp_train = ScalogramDataset(train_dir)
@@ -236,7 +236,7 @@ if __name__ == '__main__':
         if val_acc > best_val_acc:
             best_val_acc = val_acc
             patience_counter = 0
-            torch.save(model.state_dict(), "modelv2.pth")
+            torch.save(model.state_dict(), "model.pth")
         else:
             patience_counter += 1
             if patience_counter >= patience:
@@ -244,7 +244,7 @@ if __name__ == '__main__':
                 break
 
     # Final evaluation
-    model.load_state_dict(torch.load("modelv2.pth"))
+    model.load_state_dict(torch.load("model.pth"))
     model.eval()
 
     all_preds = []
@@ -271,7 +271,7 @@ if __name__ == '__main__':
     sns.heatmap(cm, annot=True, fmt="d", cmap="Blues",
                 xticklabels=train_dataset.classes,
                 yticklabels=train_dataset.classes)
-    plt.title("Confusion Matrix (Counts)")
+    plt.title("Confusion Matrix")
 
     plt.tight_layout()
     plt.savefig("confusion_matrices.png")
