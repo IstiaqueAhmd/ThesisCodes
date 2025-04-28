@@ -28,7 +28,7 @@ def generateWaveletTransform(data_type):
             amplitude = np.sqrt(I ** 2 + Q ** 2)
             phase = np.arctan2(Q, I)
 
-            wavelet = 'cmor1.5-0.5'
+            wavelet = 'cmor2.5-1.5'
             scales = np.logspace(0.5, 2, num=200)
 
             def compute_cwt(signal):
