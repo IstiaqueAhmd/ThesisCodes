@@ -28,7 +28,7 @@ def generateWaveletTransform(data_type):
             amplitude = np.sqrt(I ** 2 + Q ** 2)
             phase = np.arctan2(Q, I)
 
-            wavelet = 'cmor2.5-1.5'
+            wavelet = 'cmor1.5-0.5'
             scales = np.logspace(0.5, 2, num=200)
 
             def compute_cwt(signal):
@@ -60,6 +60,8 @@ def generateWaveletTransform(data_type):
 
 # Run for multiple modulation types
 classes = ["16QAM", "64QAM", "8PSK", "B-FM", "BPSK", "CPFSK", "DSB-AM", "GFSK", "PAM4", "QPSK", "SSB-AM"]
+classes = ["64QAM", "B-FM", "BPSK", "CPFSK", "GFSK", "PAM4", "QPSK", "SSB-AM"]
+
 for data_type in classes:
     generateWaveletTransform(data_type)
 

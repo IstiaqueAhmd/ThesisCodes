@@ -17,7 +17,7 @@ os.makedirs(test_dir, exist_ok=True)
 os.makedirs(val_dir, exist_ok=True)
 
 # Adjust these paths and classes
-classes = ["16QAM","64QAM","8PSK","B-FM","BPSK","CPFSK","DSB-AM","GFSK","PAM4","QPSK","SSB-AM"]
+classes = ["64QAM","B-FM","BPSK","CPFSK","GFSK","PAM4","QPSK","SSB-AM"]
 
 # Set the split ratios
 train_ratio = 0.8
