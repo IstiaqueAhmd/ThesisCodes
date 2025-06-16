@@ -44,7 +44,7 @@ class ScalogramDataset(Dataset):
 
 
 def calculate_dataset_stats(dataset):
-    loader = DataLoader(dataset, batch_size=32, num_workers=4)
+    loader = DataLoader(dataset, batch_size=64, num_workers=4)
     mean = torch.zeros(2)
     std = torch.zeros(2)
     for inputs, _ in loader:
@@ -219,8 +219,6 @@ if __name__ == '__main__':
 
         epoch_loss = train_loss / len(train_loader)
         train_losses.append(epoch_loss)
-
-
 
         # Validation
         model.eval()

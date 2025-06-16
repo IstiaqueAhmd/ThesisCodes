@@ -2,6 +2,7 @@ import os
 import random
 import numpy as np
 import torch
+import torchvision
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
@@ -54,124 +55,60 @@ def calculate_dataset_stats(dataset):
     return (mean / len(loader)).tolist(), (std / len(loader)).tolist()
 
 
-import torch.nn.functional as F
-
-
-class ChannelAttention(nn.Module):
-    """Lightweight Channel Attention Module"""
-
-    def __init__(self, channels, reduction=8):
-        super().__init__()
-        self.avg_pool = nn.AdaptiveAvgPool2d(1)
-        self.max_pool = nn.AdaptiveMaxPool2d(1)
-
-        self.fc = nn.Sequential(
-            nn.Linear(channels, channels // reduction, bias=False),
-            nn.ReLU(),
-            nn.Linear(channels // reduction, channels, bias=False),
-            nn.Sigmoid()
-        )
-
-    def forward(self, x):
-        b, c, _, _ = x.size()
-        y_avg = self.avg_pool(x).view(b, c)
-        y_max = self.max_pool(x).view(b, c)
-
-        y_avg = self.fc(y_avg).view(b, c, 1, 1)
-        y_max = self.fc(y_max).view(b, c, 1, 1)
-
-        return x * (y_avg + y_max)
-
-
-class DepthwiseSeparable(nn.Module):
-    """Depthwise Separable Convolution with Residual Connection"""
-
-    def __init__(self, in_channels, out_channels, stride=1):
-        super().__init__()
-        self.depthwise = nn.Conv2d(
-            in_channels, in_channels, kernel_size=3,
-            stride=stride, padding=1, groups=in_channels, bias=False
-        )
-        self.pointwise = nn.Conv2d(
-            in_channels, out_channels, kernel_size=1, bias=False
-        )
-        self.bn1 = nn.BatchNorm2d(in_channels)
-        self.bn2 = nn.BatchNorm2d(out_channels)
-
-        # Skip connection if dimensions change
-        self.shortcut = nn.Sequential()
-        if stride != 1 or in_channels != out_channels:
-            self.shortcut = nn.Sequential(
-                nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=stride, bias=False),
-                nn.BatchNorm2d(out_channels)
-            )
-
-    def forward(self, x):
-        out = F.relu(self.bn1(self.depthwise(x)))
-        out = self.bn2(self.pointwise(out))
-        out += self.shortcut(x)
-        return F.relu(out)
-
-
-class DualStreamCNN(nn.Module):
+class DualStreamSqueezeNet(nn.Module):
     def __init__(self, num_classes):
         super().__init__()
 
-        # Enhanced stream definition
-        def create_stream():
+        def create_squeezenet_stream():
+            # Load SqueezeNet 1.1 model without pretrained weights
+            model = torchvision.models.squeezenet1_1(pretrained=False)
+
+            # Replace first convolution to handle single-channel input
+            original_conv = model.features[0]
+            new_conv = nn.Conv2d(1, original_conv.out_channels,
+                                 kernel_size=original_conv.kernel_size,
+                                 stride=original_conv.stride,
+                                 padding=original_conv.padding)
+
+            # Create new feature extractor
             return nn.Sequential(
-                nn.Conv2d(1, 16, 3, padding=1, bias=False),
-                nn.BatchNorm2d(16),
-                nn.ReLU(),
-
-                DepthwiseSeparable(16, 24, stride=2),
-                ChannelAttention(24),
-
-                DepthwiseSeparable(24, 32, stride=1),
-                ChannelAttention(32),
-                nn.MaxPool2d(2, 2)
+                new_conv,
+                *list(model.features.children())[1:]
             )
 
-        self.stream1 = create_stream()
-        self.stream2 = create_stream()
+        # Create dual streams
+        self.stream1 = create_squeezenet_stream()
+        self.stream2 = create_squeezenet_stream()
 
-        # Optimized combined processing
+        # Combined processing (input channels = 2*512 = 1024)
         self.combined = nn.Sequential(
-            DepthwiseSeparable(64, 96, stride=2),  # 32*2=64 input channels
-            ChannelAttention(96),
+            nn.Conv2d(1024, 512, kernel_size=1),  # Channel reduction
+            nn.BatchNorm2d(512),
+            nn.ReLU(inplace=True),
 
-            DepthwiseSeparable(96, 128, stride=1),
-            ChannelAttention(128),
+            nn.Conv2d(512, 256, kernel_size=3, padding=1),
+            nn.BatchNorm2d(256),
+            nn.ReLU(inplace=True),
 
             nn.AdaptiveAvgPool2d((1, 1)),
             nn.Flatten()
         )
 
-        # Enhanced classifier
+        # Classifier
         self.classifier = nn.Sequential(
-            nn.Dropout(0.4),
-            nn.Linear(128, 64),
-            nn.ReLU(),
-            nn.Linear(64, num_classes)
+            nn.Dropout(0.5),
+            nn.Linear(256, num_classes)
         )
 
-        # Initialize weights
-        self._initialize_weights()
-
-    def _initialize_weights(self):
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
-                if m.bias is not None:
-                    nn.init.constant_(m.bias, 0)
-            elif isinstance(m, nn.Linear):
-                nn.init.normal_(m.weight, 0, 0.01)
-                nn.init.constant_(m.bias, 0)
-
     def forward(self, x):
-        x1 = self.stream1(x[:, 0:1, :, :])
-        x2 = self.stream2(x[:, 1:2, :, :])
+        # Process each channel separately
+        x1 = self.stream1(x[:, 0:1, :, :])  # First channel
+        x2 = self.stream2(x[:, 1:2, :, :])  # Second channel
+
+        # Concatenate feature maps
         x = torch.cat((x1, x2), dim=1)
+
+        # Process combined features
         x = self.combined(x)
         return self.classifier(x)
 
@@ -210,7 +147,7 @@ if __name__ == '__main__':
     # Model setup
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(device)
-    model = DualStreamCNN(len(train_dataset.classes)).to(device)
+    model = DualStreamSqueezeNet(len(train_dataset.classes)).to(device)
     print(sum(p.numel() for p in model.parameters()))
     # Optimizer and scheduler
     optimizer = optim.AdamW(model.parameters(), lr=0.001, weight_decay=1e-4)

@@ -134,9 +134,9 @@ if __name__ == '__main__':
     test_dataset = ScalogramDataset(test_dir, val_test_transform)
 
     # Data loaders
-    train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=4, pin_memory=True)
-    val_loader = DataLoader(val_dataset, batch_size=64, shuffle=False, num_workers=4, pin_memory=True)
-    test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False, num_workers=4, pin_memory=True)
+    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True, num_workers=4, pin_memory=True)
+    val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False, num_workers=4, pin_memory=True)
+    test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False, num_workers=4, pin_memory=True)
 
     # Model setup
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -147,6 +147,10 @@ if __name__ == '__main__':
     optimizer = optim.AdamW(model.parameters(), lr=0.001, weight_decay=1e-4)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=3, factor=0.5)
     criterion = nn.CrossEntropyLoss()
+
+    # Store Losses
+    train_losses = []
+    val_losses = []
 
     # Training loop with early stopping
     best_val_acc = 0.0
@@ -173,6 +177,8 @@ if __name__ == '__main__':
             _, predicted = outputs.max(1)
             correct += (predicted == labels).sum().item()
             total += labels.size(0)
+        epoch_loss = train_loss / len(train_loader)
+        train_losses.append(epoch_loss)
 
         # Validation
         model.eval()
@@ -190,6 +196,9 @@ if __name__ == '__main__':
                 _, predicted = outputs.max(1)
                 val_correct += (predicted == labels).sum().item()
                 val_total += labels.size(0)
+
+        val_loss /= len(val_loader)
+        val_losses.append(val_loss)
 
         # Calculate metrics
         train_acc = correct / total
@@ -231,22 +240,32 @@ if __name__ == '__main__':
             all_preds.extend(predicted.cpu().numpy())
             all_labels.extend(labels.cpu().numpy())
 
-    # Classification report
-    print("Classification Report:")
-    print(classification_report(all_labels, all_preds, target_names=train_dataset.classes))
+        # Classification report
+        print("Classification Report:")
+        print(classification_report(all_labels, all_preds, target_names=train_dataset.classes))
 
-    # Confusion matrices
-    plt.figure(figsize=(15, 6))
+        # Confusion matrices
+        plt.figure(figsize=(15, 6))
 
-    # Raw counts
-    plt.subplot(1, 2, 1)
-    cm = confusion_matrix(all_labels, all_preds)
-    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues",
-                xticklabels=train_dataset.classes,
-                yticklabels=train_dataset.classes)
-    plt.title("Confusion Matrix")
+        # Raw counts
+        plt.subplot(1, 2, 1)
+        cm = confusion_matrix(all_labels, all_preds)
+        sns.heatmap(cm, annot=True, fmt="d", cmap="Blues",
+                    xticklabels=train_dataset.classes,
+                    yticklabels=train_dataset.classes)
+        plt.title("Confusion Matrix")
 
-    plt.tight_layout()
-    plt.savefig("confusion_matrices_modelv3.png")
-    plt.show()
+        # Loss track
+        plt.subplot(1, 2, 2)
+        plt.plot(train_losses, label='Training Loss')
+        plt.plot(val_losses, label='Validation Loss')
+        plt.xlabel('Epoch')
+        plt.ylabel('Loss')
+        plt.title('Loss Curve')
+        plt.legend()
+        plt.grid(True)
+
+        plt.tight_layout()
+        plt.savefig("confusion_matrices_modelv3.png")
+        plt.show()
 

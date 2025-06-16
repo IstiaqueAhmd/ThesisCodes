@@ -4,8 +4,8 @@ import shutil
 from PIL import Image
 
 # Set the paths for the dataset
-base_path = "Data/Scalograms"
-output_base = "Data/Splitted_Data"
+base_path = "Data/Scalograms2"
+output_base = "Data2/Splitted_Data"
 
 # Create output directories
 train_dir = os.path.join(output_base, "train")
