@@ -17,7 +17,6 @@ random.seed(42)
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
-
 class ScalogramDataset(Dataset):
     def __init__(self, root_dir, transform=None):
         self.root_dir = root_dir

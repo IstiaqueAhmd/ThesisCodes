@@ -1,3 +1,4 @@
+#import necessary libraries
 import os
 import numpy as np
 import scipy.io as sio
@@ -5,6 +6,10 @@ import pywt
 import cv2
 from sklearn.preprocessing import MinMaxScaler
 import matplotlib.pyplot as plt
+
+""" 
+This code generates Amplitude and Phase scalograms using I/Q data.
+"""
 
 def generateWaveletTransform(data_type):
     input_dir = f'Data/ModClassDataFiles/{data_type}'

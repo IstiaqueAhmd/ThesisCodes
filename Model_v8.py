@@ -97,7 +97,6 @@ class DualStreamDenseNet(nn.Module):
         return self.classifier(x)
 
 
-
 if __name__ == '__main__':
     # Dataset setup
     train_dir = 'Data/Splitted_Data/train'
@@ -257,8 +256,6 @@ if __name__ == '__main__':
     plt.title('Loss Curve')
     plt.legend()
     plt.grid(True)
-
     plt.tight_layout()
     plt.savefig("confusion_matrices_modelv8.png")
     plt.show()
-

@@ -1,3 +1,4 @@
+#import necessary libraries
 import os
 import numpy as np
 import scipy.io as sio
@@ -5,6 +6,10 @@ import pywt
 import cv2
 from sklearn.preprocessing import MinMaxScaler
 import matplotlib.pyplot as plt
+
+"""
+This code generates In-phase, Quadrature and Amplitude scalograms using raw I/Q samples. 
+"""
 
 def generateWaveletTransform(data_type):
     input_dir = f'Data/ModClassDataFiles/{data_type}'
