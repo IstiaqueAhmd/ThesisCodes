@@ -58,91 +58,68 @@ class DualStreamCNN(nn.Module):
     def __init__(self, num_classes):
         super().__init__()
 
-        # Helper function to create a depthwise separable convolution block
-        def depthwise_separable_conv(in_channels, out_channels, kernel_size, stride=1, padding=0):
+        # Shared early feature extractor (edges/textures are common)
+        self.shared = nn.Sequential(
+            nn.Conv2d(1, 16, kernel_size=7, stride=2, padding=3),  # lighter than 11x11
+            nn.BatchNorm2d(16),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=3, stride=2)
+        )
+
+        # Depthwise separable conv block
+        def dw_sep_conv(in_ch, out_ch, kernel=3, stride=1, padding=1):
             return nn.Sequential(
-                # Depthwise convolution
-                nn.Conv2d(
-                    in_channels,
-                    in_channels,
-                    kernel_size=kernel_size,
-                    stride=stride,
-                    padding=padding,
-                    groups=in_channels,  # Each input channel processed separately
-                    bias=False
-                ),
-                # Pointwise convolution (1x1 to change channel depth)
-                nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=1, bias=False),
+                nn.Conv2d(in_ch, in_ch, kernel, stride, padding, groups=in_ch),  # depthwise
+                nn.Conv2d(in_ch, out_ch, kernel_size=1),  # pointwise
+                nn.BatchNorm2d(out_ch),
+                nn.ReLU(inplace=True)
             )
 
-        # Define reduced AlexNet stream with depthwise separable convolutions
-        def create_alexnet_stream():
+        # Define a branch for each stream (after shared layers)
+        def create_branch():
             return nn.Sequential(
-                # Block 1
-                depthwise_separable_conv(1, 16, kernel_size=11, stride=4, padding=2),
-                nn.BatchNorm2d(16),
-                nn.ReLU(inplace=True),
-                nn.MaxPool2d(kernel_size=3, stride=2),
+                dw_sep_conv(16, 32, kernel=3, padding=1),
+                nn.MaxPool2d(3, 2),
 
-                # Block 2
-                depthwise_separable_conv(16, 32, kernel_size=5, padding=2),
-                nn.BatchNorm2d(32),
-                nn.ReLU(inplace=True),
-                nn.MaxPool2d(kernel_size=3, stride=2),
+                dw_sep_conv(32, 64, kernel=3, padding=1),
+                dw_sep_conv(64, 64, kernel=3, padding=1),
 
-                # Block 3
-                depthwise_separable_conv(32, 64, kernel_size=3, padding=1),
-                nn.BatchNorm2d(64),
-                nn.ReLU(inplace=True),
-
-                # Block 4
-                depthwise_separable_conv(64, 64, kernel_size=3, padding=1),
-                nn.BatchNorm2d(64),
-                nn.ReLU(inplace=True),
-
-                # Block 5
-                depthwise_separable_conv(64, 32, kernel_size=3, padding=1),
-                nn.BatchNorm2d(32),
-                nn.ReLU(inplace=True),
-                nn.MaxPool2d(kernel_size=3, stride=2),
+                dw_sep_conv(64, 32, kernel=3, padding=1),
+                nn.MaxPool2d(3, 2),
             )
 
-        # Dual streams for separate channel processing
-        self.stream1 = create_alexnet_stream()
-        self.stream2 = create_alexnet_stream()
+        self.stream1 = create_branch()
+        self.stream2 = create_branch()
 
-        # Combined feature processing with depthwise separable convolutions
+        # Combined feature processing (lighter than before)
         self.combined = nn.Sequential(
-            depthwise_separable_conv(64, 128, kernel_size=3, padding=1),
-            nn.BatchNorm2d(128),
-            nn.ReLU(inplace=True),
-
-            depthwise_separable_conv(128, 128, kernel_size=3, padding=1),
-            nn.BatchNorm2d(128),
-            nn.ReLU(inplace=True),
-
+            dw_sep_conv(64, 64, kernel=3, padding=1),
             nn.AdaptiveAvgPool2d((1, 1)),
             nn.Flatten()
         )
 
-        # Classifier remains unchanged
+        # Classifier
         self.classifier = nn.Sequential(
             nn.Dropout(0.3),
-            nn.Linear(128, num_classes)
+            nn.Linear(64, num_classes)
         )
 
     def forward(self, x):
-        # Process each channel separately
-        x1 = self.stream1(x[:, 0:1, :, :])  # First channel
-        x2 = self.stream2(x[:, 1:2, :, :])  # Second channel
+        # Shared low-level features
+        x1 = self.shared(x[:, 0:1, :, :])
+        x2 = self.shared(x[:, 1:2, :, :])
 
-        # Combine feature maps
+        # Separate streams
+        x1 = self.stream1(x1)
+        x2 = self.stream2(x2)
+
+        # Concatenate channel-wise
         x = torch.cat((x1, x2), dim=1)
 
-        # Process combined features
+        # Combined features
         x = self.combined(x)
-        return self.classifier(x)
 
+        return self.classifier(x)
 
 
 if __name__ == '__main__':
