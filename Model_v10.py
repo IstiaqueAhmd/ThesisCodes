@@ -17,7 +17,6 @@ random.seed(42)
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
-
 class ScalogramDataset(Dataset):
     def __init__(self, root_dir, transform=None):
         self.root_dir = root_dir
@@ -73,11 +72,15 @@ class DSConv(nn.Module):
 def make_stream():
     return nn.Sequential(
         nn.Conv2d(1, 16, 7, 2, 3, bias=False),
-        nn.BatchNorm2d(16), nn.ReLU(inplace=True),
+        nn.BatchNorm2d(16), 
+        nn.ReLU(inplace=True),
         nn.MaxPool2d(3, 2),
-        DSConv(16, 32), nn.MaxPool2d(3, 2),
-        DSConv(32, 64), DSConv(64, 64),
-        DSConv(64, 32), nn.MaxPool2d(3, 2)
+        DSConv(16, 32), 
+        nn.MaxPool2d(3, 2),
+        DSConv(32, 64), 
+        DSConv(64, 64),
+        DSConv(64, 32), 
+        nn.MaxPool2d(3, 2)
     )
 
 
@@ -101,6 +104,7 @@ class DualStreamCNN(nn.Module):
         xp = self.stream_phase(x[:, 1:2])   # phase channel
         x = torch.cat([xa, xp], 1)          # fuse streams
         return self.classifier(self.fuse(x))
+
 
 if __name__ == '__main__':
     # Dataset setup
