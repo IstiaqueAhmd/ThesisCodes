@@ -102,7 +102,7 @@ class DualStreamCNN(nn.Module):
     def forward(self, x):
         xa = self.stream_amp(x[:, 0:1])     # amplitude channel
         xp = self.stream_phase(x[:, 1:2])   # phase channel
-        x = torch.cat([xa, xp], 1)          # fuse streams
+        x = torch.cat([xa, xp], 1)          
         return self.classifier(self.fuse(x))
 
 
@@ -134,9 +134,9 @@ if __name__ == '__main__':
     test_dataset = ScalogramDataset(test_dir, val_test_transform)
 
     # Data loaders
-    train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=4, pin_memory=True)
-    val_loader = DataLoader(val_dataset, batch_size=64, shuffle=False, num_workers=4, pin_memory=True)
-    test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False, num_workers=4, pin_memory=True)
+    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True, num_workers=4, pin_memory=True)
+    val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False, num_workers=4, pin_memory=True)
+    test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False, num_workers=4, pin_memory=True)
 
     # Model setup
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -219,7 +219,7 @@ if __name__ == '__main__':
         if val_acc > best_val_acc:
             best_val_acc = val_acc
             patience_counter = 0
-            torch.save(model.state_dict(), "modelv9.pth")
+            torch.save(model.state_dict(), "modelv10.pth")
         else:
             patience_counter += 1
             if patience_counter >= patience:
@@ -227,7 +227,7 @@ if __name__ == '__main__':
                 break
 
     # Final evaluation
-    model.load_state_dict(torch.load("modelv9.pth"))
+    model.load_state_dict(torch.load("modelv10.pth"))
     model.eval()
 
     all_preds = []
@@ -267,6 +267,6 @@ if __name__ == '__main__':
     plt.grid(True)
 
     plt.tight_layout()
-    plt.savefig("confusion_matrices_modelv9.png")
+    plt.savefig("confusion_matrices_modelv10.png")
     plt.show()
 
