@@ -16,7 +16,6 @@ def generateWaveletTransform(data_type):
 
     sample_count = 0
 
-
     for filename in os.listdir(input_dir):
         if filename.endswith('.mat'):
             mat_data = sio.loadmat(os.path.join(input_dir, filename))
