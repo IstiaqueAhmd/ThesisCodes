@@ -58,10 +58,10 @@ class DSConv(nn.Module):
     def __init__(self, in_ch, out_ch, k=3, s=1, p=1):
         super().__init__()
         self.block = nn.Sequential(
-            nn.Conv2d(in_ch, in_ch, k, s, p, groups=in_ch, bias=False),
+            nn.Conv2d(in_ch, in_ch, k, s, p, groups=in_ch, bias=False), # Depth-wise
             nn.BatchNorm2d(in_ch),
             nn.ReLU(inplace=True),
-            nn.Conv2d(in_ch, out_ch, 1, bias=False),
+            nn.Conv2d(in_ch, out_ch, 1, bias=False), # Point-wise
             nn.BatchNorm2d(out_ch),
             nn.ReLU(inplace=True)
         )
